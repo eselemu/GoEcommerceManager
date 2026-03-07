@@ -1,0 +1,19 @@
+[
+  {
+    "id": "88eef1f9-f4e0-4f14-b68c-d8c7715fdf84",
+    "products": [
+      {
+        "product_id": "1d1370b4-b70c-4322-b615-0681b7975567",
+        "name": "test",
+        "quantity": 89,
+        "price": 8989,
+        "subtotal": 800021
+      }
+    ],
+    "total": 800021,
+    "status": "completed",
+    "created_at": "2026-03-07T16:49:38.890735505-06:00",
+    "updated_at": "2026-03-07T16:52:19.844840005-06:00",
+    "completed_at": "2026-03-07T16:52:19.844840005-06:00"
+  }
+]
