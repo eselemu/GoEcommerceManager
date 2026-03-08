@@ -14,6 +14,11 @@ import (
 	"github.com/google/uuid"
 )
 
+var (
+	serverLogger     *log.Logger
+	handleConnLogger *log.Logger
+)
+
 // InventoryServer represents the server with its data stores
 type InventoryServer struct {
 	products     map[string]shared.Product
@@ -134,17 +139,27 @@ func (s *InventoryServer) saveOrders() error {
 }
 
 func main() {
+	file, err := os.OpenFile("info.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal("Failed to open log file")
+	}
+	defer file.Close()
+
+	serverLogger = log.New(file, "[Server] main(): ", log.LstdFlags)
+	handleConnLogger = log.New(file, "[Server] handleConn():", log.LstdFlags)
 	// Load configuration
 	config, err := loadConfig("config.json")
 	if err != nil {
-		log.Fatal("Error loading config:", err)
+		serverLogger.Fatal("Error loading config:", err)
 	}
+	serverLogger.Print("Loaded config file")
 
 	addr := fmt.Sprintf("%s:%d", config.Server.Host, config.Server.Port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatal(err)
+		serverLogger.Fatal(err)
 	}
+	serverLogger.Print(fmt.Sprintf("Listening on %s", addr))
 	defer listener.Close()
 
 	fmt.Printf("Inventory Management Server is listening on %s\n", addr)
@@ -155,9 +170,10 @@ func main() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("Error accepting connection: %v", err)
+			serverLogger.Printf("Error accepting connection: %v", err)
 			continue
 		}
+		serverLogger.Print("Connection succesful. Creating goroutine for new client")
 
 		go server.handleConn(conn)
 	}
@@ -182,7 +198,9 @@ func loadConfig(filename string) (*shared.Config, error) {
 
 func (s *InventoryServer) handleConn(c net.Conn) {
 	defer c.Close()
+	handleConnLogger := log.New(handleConnLogger.Writer(), fmt.Sprintf("[Server] handleConn() for client %s: ", c.RemoteAddr().String()), log.LstdFlags)
 	fmt.Printf("Client connected from %s\n", c.RemoteAddr().String())
+	handleConnLogger.Printf("Client connected, handling connection")
 
 	decoder := json.NewDecoder(c)
 	encoder := json.NewEncoder(c)
@@ -193,50 +211,55 @@ func (s *InventoryServer) handleConn(c net.Conn) {
 		err := decoder.Decode(&req)
 		if err != nil {
 			if err != io.EOF {
+				handleConnLogger.Print("Error decoding request from %s: %v", c.RemoteAddr().String(), err)
 				fmt.Printf("Error decoding request from %s: %v\n", c.RemoteAddr().String(), err)
 			}
 			break
 		}
-
+		handleConnLogger.Print("Action received valid, processing")
 		fmt.Printf("Received action '%s' from %s\n", req.Action, c.RemoteAddr().String())
 
 		// Process the request and get response
-		response := s.processRequest(req)
+		response := s.processRequest(req, handleConnLogger)
 
 		// Send response back to client
 		err = encoder.Encode(response)
 		if err != nil {
+			handleConnLogger.Print("Failure to send response to %s: %v", c.RemoteAddr().String(), err)
 			fmt.Printf("Error sending response to %s: %v\n", c.RemoteAddr().String(), err)
 			break
 		}
 	}
 
+	handleConnLogger.Print("Connection with client %s terminated", c.RemoteAddr().String())
 	fmt.Printf("Client %s disconnected\n", c.RemoteAddr().String())
 }
 
-func (s *InventoryServer) processRequest(req shared.Request) shared.Response {
+func (s *InventoryServer) processRequest(req shared.Request, logger *log.Logger) shared.Response {
+	handleConnLogger.SetPrefix("[Server] processRequest(): ")
 	switch req.Action {
 	case shared.ActionAddProduct:
-		return s.handleAddProduct(req.Parameters)
+		return s.handleAddProduct(req.Parameters, logger)
 	case shared.ActionUpdateStock:
-		return s.handleUpdateStock(req.Parameters)
+		return s.handleUpdateStock(req.Parameters, logger)
 	case shared.ActionUpdatePrice:
-		return s.handleUpdatePrice(req.Parameters)
+		return s.handleUpdatePrice(req.Parameters, logger)
 	case shared.ActionCreateOrder:
-		return s.handleCreateOrder(req.Parameters)
+		return s.handleCreateOrder(req.Parameters, logger)
 	case shared.ActionUpdateOrderStatus:
-		return s.handleUpdateOrderStatus(req.Parameters)
+		return s.handleUpdateOrderStatus(req.Parameters, logger)
 	case shared.ActionListProducts:
-		return s.handleListProducts()
+		return s.handleListProducts(logger)
 	case shared.ActionListOrders:
-		return s.handleListOrders()
+		return s.handleListOrders(logger)
 	case shared.ActionGetProduct:
-		return s.handleGetProduct(req.Parameters)
+		return s.handleGetProduct(req.Parameters, logger)
 	case shared.ActionGetOrder:
-		return s.handleGetOrder(req.Parameters)
+		return s.handleGetOrder(req.Parameters, logger)
 	case shared.ActionDeleteProduct:
-		return s.handleDeleteProduct(req.Parameters)
+		return s.handleDeleteProduct(req.Parameters, logger)
 	default:
+		serverLogger.Print("Action unknown, returning to handle conn")
 		return shared.Response{
 			Action:  req.Action,
 			Success: false,
@@ -246,13 +269,15 @@ func (s *InventoryServer) processRequest(req shared.Request) shared.Response {
 }
 
 // handleAddProduct adds a new product to inventory
-func (s *InventoryServer) handleAddProduct(params interface{}) shared.Response {
+func (s *InventoryServer) handleAddProduct(params interface{}, logger *log.Logger) shared.Response {
 	fmt.Println("Processing add_product request...")
+	logger.Print("Entering handleAddProduct")
 
 	// Parse parameters
 	var p shared.AddProductParams
 	data, err := json.Marshal(params)
 	if err != nil {
+		logger.Print("Invalid parameters in handleAddProduct, returning")
 		return shared.Response{
 			Action:  shared.ActionAddProduct,
 			Success: false,
@@ -262,6 +287,7 @@ func (s *InventoryServer) handleAddProduct(params interface{}) shared.Response {
 
 	err = json.Unmarshal(data, &p)
 	if err != nil {
+		logger.Print("Error unmarshaling in handleAddProduct, returning")
 		return shared.Response{
 			Action:  shared.ActionAddProduct,
 			Success: false,
@@ -271,6 +297,7 @@ func (s *InventoryServer) handleAddProduct(params interface{}) shared.Response {
 
 	// Validate input
 	if p.Name == "" {
+		logger.Print("Invalid parameters in handleAddProduct; name empty, returning")
 		return shared.Response{
 			Action:  shared.ActionAddProduct,
 			Success: false,
@@ -278,6 +305,7 @@ func (s *InventoryServer) handleAddProduct(params interface{}) shared.Response {
 		}
 	}
 	if p.Price <= 0 {
+		logger.Print("Invalid parameters in handleAddProduct; price less than 0, returning")
 		return shared.Response{
 			Action:  shared.ActionAddProduct,
 			Success: false,
@@ -285,6 +313,7 @@ func (s *InventoryServer) handleAddProduct(params interface{}) shared.Response {
 		}
 	}
 	if p.Stock < 0 {
+		logger.Print("Invalid parameters in handleAddProduct; stock less than 0, returning")
 		return shared.Response{
 			Action:  shared.ActionAddProduct,
 			Success: false,
@@ -311,12 +340,15 @@ func (s *InventoryServer) handleAddProduct(params interface{}) shared.Response {
 	// Save to file
 	err = s.saveProducts()
 	if err != nil {
+		logger.Print("Error saving to file in handleAddProduct, returning")
 		return shared.Response{
 			Action:  shared.ActionAddProduct,
 			Success: false,
 			Error:   "Error saving to file: " + err.Error(),
 		}
 	}
+
+	logger.Print("Product added succesfully, returning to main")
 
 	return shared.Response{
 		Action:  shared.ActionAddProduct,
@@ -326,13 +358,14 @@ func (s *InventoryServer) handleAddProduct(params interface{}) shared.Response {
 }
 
 // handleUpdateStock updates product stock
-func (s *InventoryServer) handleUpdateStock(params interface{}) shared.Response {
+func (s *InventoryServer) handleUpdateStock(params interface{}, logger *log.Logger) shared.Response {
 	fmt.Println("Processing update_stock request...")
-
+	logger.Print("Entering handleUpdateStock")
 	// Parse parameters
 	var p shared.UpdateStockParams
 	data, err := json.Marshal(params)
 	if err != nil {
+		logger.Print("Invalid parameters in handleUpdateStock, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateStock,
 			Success: false,
@@ -342,6 +375,7 @@ func (s *InventoryServer) handleUpdateStock(params interface{}) shared.Response 
 
 	err = json.Unmarshal(data, &p)
 	if err != nil {
+		logger.Print("Error unmarshaling in handleUpdateStock, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateStock,
 			Success: false,
@@ -351,6 +385,7 @@ func (s *InventoryServer) handleUpdateStock(params interface{}) shared.Response 
 
 	// Validate input
 	if p.NewStock < 0 {
+		logger.Print("Invalid parameters in handleUpdateStock; stock less than 0, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateStock,
 			Success: false,
@@ -371,6 +406,7 @@ func (s *InventoryServer) handleUpdateStock(params interface{}) shared.Response 
 	if !exists {
 		locked = false
 		s.mu.Unlock()
+		logger.Print("Invalid parameters in handleUpdateStock; invalid product id, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateStock,
 			Success: false,
@@ -389,6 +425,7 @@ func (s *InventoryServer) handleUpdateStock(params interface{}) shared.Response 
 	// Save to file
 	err = s.saveProducts()
 	if err != nil {
+		logger.Print("Error saving to file  in handleUpdateStock, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateStock,
 			Success: false,
@@ -396,6 +433,7 @@ func (s *InventoryServer) handleUpdateStock(params interface{}) shared.Response 
 		}
 	}
 
+	logger.Print("Updated stock succesfully, returning to main")
 	return shared.Response{
 		Action:  shared.ActionUpdateStock,
 		Success: true,
@@ -404,13 +442,15 @@ func (s *InventoryServer) handleUpdateStock(params interface{}) shared.Response 
 }
 
 // handleUpdatePrice updates product price
-func (s *InventoryServer) handleUpdatePrice(params interface{}) shared.Response {
+func (s *InventoryServer) handleUpdatePrice(params interface{}, logger *log.Logger) shared.Response {
 	fmt.Println("Processing update_price request...")
+	logger.Print("Entered handleUpdatePrice")
 
 	// Parse parameters
 	var p shared.UpdatePriceParams
 	data, err := json.Marshal(params)
 	if err != nil {
+		logger.Print("Invalid parameters in handleUpdatePrice, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdatePrice,
 			Success: false,
@@ -420,6 +460,7 @@ func (s *InventoryServer) handleUpdatePrice(params interface{}) shared.Response 
 
 	err = json.Unmarshal(data, &p)
 	if err != nil {
+		logger.Print("Error unmarshaling in handleUpdatePrice returning")
 		return shared.Response{
 			Action:  shared.ActionUpdatePrice,
 			Success: false,
@@ -429,6 +470,7 @@ func (s *InventoryServer) handleUpdatePrice(params interface{}) shared.Response 
 
 	// Validate input
 	if p.NewPrice <= 0 {
+		logger.Print("Invalid parameters in handleUpdatePrice; price less than 0, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdatePrice,
 			Success: false,
@@ -449,6 +491,7 @@ func (s *InventoryServer) handleUpdatePrice(params interface{}) shared.Response 
 	if !exists {
 		locked = false
 		s.mu.Unlock()
+		logger.Print("Invalid parameters in handleUpdatePrice; invalid product id, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdatePrice,
 			Success: false,
@@ -467,13 +510,14 @@ func (s *InventoryServer) handleUpdatePrice(params interface{}) shared.Response 
 	// Save to file
 	err = s.saveProducts()
 	if err != nil {
+		logger.Print("Error saving to file in handleUpdatePrice, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdatePrice,
 			Success: false,
 			Error:   "Error saving to file: " + err.Error(),
 		}
 	}
-
+	logger.Print("Price updated succesfully, returning to main")
 	return shared.Response{
 		Action:  shared.ActionUpdatePrice,
 		Success: true,
@@ -482,13 +526,15 @@ func (s *InventoryServer) handleUpdatePrice(params interface{}) shared.Response 
 }
 
 // handleCreateOrder creates a new order
-func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response {
+func (s *InventoryServer) handleCreateOrder(params interface{}, logger *log.Logger) shared.Response {
 	fmt.Println("Processing create_order request...")
+	logger.Print("Entered handleCreateOrder")
 
 	// Parse parameters
 	var p shared.CreateOrderParams
 	data, err := json.Marshal(params)
 	if err != nil {
+		logger.Print("Invalid parameters in handleCreateOrder, returning")
 		return shared.Response{
 			Action:  shared.ActionCreateOrder,
 			Success: false,
@@ -498,6 +544,7 @@ func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response 
 
 	err = json.Unmarshal(data, &p)
 	if err != nil {
+		logger.Print("Error unmarshaling in handleCreateOrder, returning")
 		return shared.Response{
 			Action:  shared.ActionCreateOrder,
 			Success: false,
@@ -507,6 +554,7 @@ func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response 
 
 	// Validate order items
 	if len(p.Items) == 0 {
+		logger.Print("Invalid parameters in handleCreateOrder; item less than zero, returning")
 		return shared.Response{
 			Action:  shared.ActionCreateOrder,
 			Success: false,
@@ -534,6 +582,7 @@ func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response 
 		if !exists {
 			locked = false
 			s.mu.Unlock()
+			logger.Print("Invalid parameters in handleCreateOrder; unidentified product id, returning")
 			return shared.Response{
 				Action:  shared.ActionCreateOrder,
 				Success: false,
@@ -545,6 +594,7 @@ func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response 
 		if product.Stock < item.Quantity {
 			locked = false
 			s.mu.Unlock()
+			logger.Print("Invalid parameters in handleCreateOrder; stock not sufficient for request, returning")
 			return shared.Response{
 				Action:  shared.ActionCreateOrder,
 				Success: false,
@@ -571,6 +621,7 @@ func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response 
 		product.UpdatedAt = time.Now()
 		s.products[item.ProductID] = product
 		productsToUpdate = append(productsToUpdate, item.ProductID)
+		logger.Print("Succesfully created order item")
 	}
 
 	// Create order
@@ -594,6 +645,7 @@ func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response 
 	// Save both products and orders to files
 	err = s.saveProducts()
 	if err != nil {
+		logger.Print("Error saving products to file after creating order, returning")
 		return shared.Response{
 			Action:  shared.ActionCreateOrder,
 			Success: false,
@@ -603,6 +655,7 @@ func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response 
 
 	err = s.saveOrders()
 	if err != nil {
+		logger.Print("Error saving order to file, returning")
 		return shared.Response{
 			Action:  shared.ActionCreateOrder,
 			Success: false,
@@ -610,6 +663,7 @@ func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response 
 		}
 	}
 
+	logger.Print("Order succesfully created and saved, returning")
 	return shared.Response{
 		Action:  shared.ActionCreateOrder,
 		Success: true,
@@ -618,13 +672,15 @@ func (s *InventoryServer) handleCreateOrder(params interface{}) shared.Response 
 }
 
 // handleUpdateOrderStatus updates order status
-func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Response {
+func (s *InventoryServer) handleUpdateOrderStatus(params interface{}, logger *log.Logger) shared.Response {
 	fmt.Println("Processing update_order_status request...")
+	logger.Print("Entered handleUpdateOrderStatus")
 
 	// Parse parameters
 	var p shared.UpdateOrderStatusParams
 	data, err := json.Marshal(params)
 	if err != nil {
+		logger.Print("Error marshaling in handleUpdateOrderStatus, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateOrderStatus,
 			Success: false,
@@ -633,6 +689,7 @@ func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Res
 	}
 
 	err = json.Unmarshal(data, &p)
+	logger.Print("Error unmarshaling in handleUpdateOrderStatus, returning")
 	if err != nil {
 		return shared.Response{
 			Action:  shared.ActionUpdateOrderStatus,
@@ -648,10 +705,11 @@ func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Res
 		validStatus = true
 	}
 	if !validStatus {
+		logger.Print("Invalid status in handleCreateOrder, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateOrderStatus,
 			Success: false,
-			Error:   fmt.Sprintf("Invalid status: %s", p.Status),
+			Error:   fmt.Sprintf("Invalid status in handleCreateOrder: %s", p.Status),
 		}
 	}
 
@@ -669,6 +727,7 @@ func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Res
 	if !exists {
 		locked = false
 		s.mu.Unlock()
+		logger.Print("Invalid parameters in handleCreateOrder; order id not found, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateOrderStatus,
 			Success: false,
@@ -680,6 +739,7 @@ func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Res
 	if order.Status == shared.OrderStatusCompleted && p.Status == shared.OrderStatusCompleted {
 		locked = false
 		s.mu.Unlock()
+		logger.Print("Invalid parameters in handleCreateOrder; Order status marked as completed, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateOrderStatus,
 			Success: false,
@@ -700,6 +760,8 @@ func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Res
 		stockRestored = true
 	}
 
+	logger.Print("Restored stock at handleUpdateOrderStatus")
+
 	// Update order status
 	now := time.Now()
 	order.Status = p.Status
@@ -711,6 +773,7 @@ func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Res
 
 	s.orders[p.OrderID] = order
 
+	logger.Print("Order status changed in handleCreateOrder")
 	// Unlock before file operations
 	locked = false
 	s.mu.Unlock()
@@ -719,6 +782,7 @@ func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Res
 	if stockRestored {
 		err = s.saveProducts()
 		if err != nil {
+			logger.Print("Error saving products to file in handleCreateOrder, returning")
 			return shared.Response{
 				Action:  shared.ActionUpdateOrderStatus,
 				Success: false,
@@ -730,12 +794,15 @@ func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Res
 	// Save orders to file
 	err = s.saveOrders()
 	if err != nil {
+		logger.Print("Error saving order in handleCreateOrder, returning")
 		return shared.Response{
 			Action:  shared.ActionUpdateOrderStatus,
 			Success: false,
 			Error:   "Error saving order to file: " + err.Error(),
 		}
 	}
+
+	logger.Print("Order status changed and saved succesfully in handleCreateOrder, returning")
 
 	return shared.Response{
 		Action:  shared.ActionUpdateOrderStatus,
@@ -745,8 +812,9 @@ func (s *InventoryServer) handleUpdateOrderStatus(params interface{}) shared.Res
 }
 
 // handleListProducts returns all products
-func (s *InventoryServer) handleListProducts() shared.Response {
+func (s *InventoryServer) handleListProducts(logger *log.Logger) shared.Response {
 	fmt.Println("Processing list_products request...")
+	logger.Print("Entered handleListProducts")
 
 	s.mu.RLock()
 	products := make([]shared.Product, 0, len(s.products))
@@ -754,6 +822,8 @@ func (s *InventoryServer) handleListProducts() shared.Response {
 		products = append(products, p)
 	}
 	s.mu.RUnlock()
+
+	logger.Print("Sharing list of products, returning")
 
 	return shared.Response{
 		Action:  shared.ActionListProducts,
@@ -763,8 +833,9 @@ func (s *InventoryServer) handleListProducts() shared.Response {
 }
 
 // handleListOrders returns all orders
-func (s *InventoryServer) handleListOrders() shared.Response {
+func (s *InventoryServer) handleListOrders(logger *log.Logger) shared.Response {
 	fmt.Println("Processing list_orders request...")
+	logger.Print("Entered handleListOrders")
 
 	s.mu.RLock()
 	orders := make([]shared.Order, 0, len(s.orders))
@@ -773,6 +844,7 @@ func (s *InventoryServer) handleListOrders() shared.Response {
 	}
 	s.mu.RUnlock()
 
+	logger.Print("Sharing list of orders, returning")
 	return shared.Response{
 		Action:  shared.ActionListOrders,
 		Success: true,
@@ -781,13 +853,15 @@ func (s *InventoryServer) handleListOrders() shared.Response {
 }
 
 // handleGetProduct returns a specific product
-func (s *InventoryServer) handleGetProduct(params interface{}) shared.Response {
+func (s *InventoryServer) handleGetProduct(params interface{}, logger *log.Logger) shared.Response {
 	fmt.Println("Processing get_product request...")
+	logger.Print("Entered handleGetProduct")
 
 	// Parse parameters
 	var p shared.GetProductParams
 	data, err := json.Marshal(params)
 	if err != nil {
+		logger.Print("Error marshaling at handleGetProduct, returning")
 		return shared.Response{
 			Action:  shared.ActionGetProduct,
 			Success: false,
@@ -797,6 +871,7 @@ func (s *InventoryServer) handleGetProduct(params interface{}) shared.Response {
 
 	err = json.Unmarshal(data, &p)
 	if err != nil {
+		logger.Print("Error unmarshaling at handleGetProduct, returning")
 		return shared.Response{
 			Action:  shared.ActionGetProduct,
 			Success: false,
@@ -809,12 +884,15 @@ func (s *InventoryServer) handleGetProduct(params interface{}) shared.Response {
 	s.mu.RUnlock()
 
 	if !exists {
+		logger.Print("Invalid parameters at handleGetProduct; product id not found, returning")
 		return shared.Response{
 			Action:  shared.ActionGetProduct,
 			Success: false,
 			Error:   fmt.Sprintf("Product with ID %s not found", p.ProductID),
 		}
 	}
+
+	logger.Print("Product get ran succesfully, returning")
 
 	return shared.Response{
 		Action:  shared.ActionGetProduct,
@@ -824,13 +902,15 @@ func (s *InventoryServer) handleGetProduct(params interface{}) shared.Response {
 }
 
 // handleGetOrder returns a specific order
-func (s *InventoryServer) handleGetOrder(params interface{}) shared.Response {
+func (s *InventoryServer) handleGetOrder(params interface{}, logger *log.Logger) shared.Response {
 	fmt.Println("Processing get_order request...")
+	logger.Print("Entered handleGetOrder")
 
 	// Parse parameters
 	var p shared.GetOrderParams
 	data, err := json.Marshal(params)
 	if err != nil {
+		logger.Print("Error marshaling at handleGetOrder, returning")
 		return shared.Response{
 			Action:  shared.ActionGetOrder,
 			Success: false,
@@ -840,6 +920,7 @@ func (s *InventoryServer) handleGetOrder(params interface{}) shared.Response {
 
 	err = json.Unmarshal(data, &p)
 	if err != nil {
+		logger.Print("Error unmarshaling at handleGetOrder, returning")
 		return shared.Response{
 			Action:  shared.ActionGetOrder,
 			Success: false,
@@ -852,6 +933,7 @@ func (s *InventoryServer) handleGetOrder(params interface{}) shared.Response {
 	s.mu.RUnlock()
 
 	if !exists {
+		logger.Print("Invalid parameters at handleGetOrder; order id not found, returning")
 		return shared.Response{
 			Action:  shared.ActionGetOrder,
 			Success: false,
@@ -859,6 +941,7 @@ func (s *InventoryServer) handleGetOrder(params interface{}) shared.Response {
 		}
 	}
 
+	logger.Print("handleGetProduct ran succesfully, returning")
 	return shared.Response{
 		Action:  shared.ActionGetOrder,
 		Success: true,
@@ -867,13 +950,15 @@ func (s *InventoryServer) handleGetOrder(params interface{}) shared.Response {
 }
 
 // handleDeleteProduct deletes a product (only if not used in any order)
-func (s *InventoryServer) handleDeleteProduct(params interface{}) shared.Response {
+func (s *InventoryServer) handleDeleteProduct(params interface{}, logger *log.Logger) shared.Response {
 	fmt.Println("Processing delete_product request...")
+	logger.Print("Entered handleDeleteProduct")
 
 	// Parse parameters
 	var p shared.DeleteProductParams
 	data, err := json.Marshal(params)
 	if err != nil {
+		logger.Print("Error marshaling at handleDeleteProduct, returning")
 		return shared.Response{
 			Action:  shared.ActionDeleteProduct,
 			Success: false,
@@ -883,6 +968,7 @@ func (s *InventoryServer) handleDeleteProduct(params interface{}) shared.Respons
 
 	err = json.Unmarshal(data, &p)
 	if err != nil {
+		logger.Print("Error unmarshaling at handleDeleteProduct, returning")
 		return shared.Response{
 			Action:  shared.ActionDeleteProduct,
 			Success: false,
@@ -904,6 +990,7 @@ func (s *InventoryServer) handleDeleteProduct(params interface{}) shared.Respons
 	if !exists {
 		locked = false
 		s.mu.Unlock()
+		logger.Print("Invalid parameter at handleDeleteProduct; product id not found, returning")
 		return shared.Response{
 			Action:  shared.ActionDeleteProduct,
 			Success: false,
@@ -918,6 +1005,7 @@ func (s *InventoryServer) handleDeleteProduct(params interface{}) shared.Respons
 				if item.ProductID == p.ProductID {
 					locked = false
 					s.mu.Unlock()
+					logger.Print("Error deleting product; product in use on existing orders, returning")
 					return shared.Response{
 						Action:  shared.ActionDeleteProduct,
 						Success: false,
@@ -938,6 +1026,7 @@ func (s *InventoryServer) handleDeleteProduct(params interface{}) shared.Respons
 	// Save to file
 	err = s.saveProducts()
 	if err != nil {
+		logger.Print("Error saving to file, returning")
 		return shared.Response{
 			Action:  shared.ActionDeleteProduct,
 			Success: false,
@@ -945,6 +1034,7 @@ func (s *InventoryServer) handleDeleteProduct(params interface{}) shared.Respons
 		}
 	}
 
+	logger.Print("Product deleted succesfully, returning")
 	return shared.Response{
 		Action:  shared.ActionDeleteProduct,
 		Success: true,

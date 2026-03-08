@@ -1,0 +1,59 @@
+Client main(): 2026/03/07 19:18:54 Succesfully connected to server
+Client ParseCommand():2026/03/07 19:19:01 Unkown command, returning
+Client ParseCommand():2026/03/07 19:19:11 Attempting to add item
+Client ParseCommand():2026/03/07 19:19:11 Add product parameters incorrect, returning
+Client ParseCommand():2026/03/07 19:19:16 Attempting to add item
+Client ParseCommand():2026/03/07 19:19:16 Added product succesfully
+Client ParseCommand():2026/03/07 19:19:16 Sending command to server
+Client ParseCommand():2026/03/07 19:19:16 Sent command to server succesfully
+Client ParseCommand():2026/03/07 19:19:16 Server response logged
+Client ParseCommand():2026/03/07 19:20:06 Attempting to delete product
+Client ParseCommand():2026/03/07 19:20:06 Deleted product successfully
+Client ParseCommand():2026/03/07 19:20:06 Sending command to server
+Client ParseCommand():2026/03/07 19:20:06 Sent command to server succesfully
+Client ParseCommand():2026/03/07 19:20:06 Server response logged
+[Client] main(): 2026/03/07 19:39:13 Client LoadConfig():
+[Client] main(): 2026/03/07 19:39:13 Config file opened
+[Client] main(): 2026/03/07 19:39:13 Config file loaded succesfully
+[Client localhost:6969] main(): 2026/03/07 19:39:13 Succesfully connected to server
+Client in localhost:6969 ParseCommand():2026/03/07 19:39:33 Attempting to add item
+Client in localhost:6969 ParseCommand():2026/03/07 19:39:33 Added product succesfully
+[Client localhost:6969] main(): 2026/03/07 19:39:33 Sending command to server
+[Client localhost:6969] main(): 2026/03/07 19:39:33 Sent command to server succesfully
+[Client localhost:6969] main(): 2026/03/07 19:39:33 Server response logged
+Client in localhost:6969 ParseCommand():2026/03/07 19:40:18 Attempting to create order
+Client in localhost:6969 ParseCommand():2026/03/07 19:40:18 Order parameters incorrect, returning
+Client in localhost:6969 ParseCommand():2026/03/07 19:40:25 Attempting to create order
+Client in localhost:6969 ParseCommand():2026/03/07 19:40:25 Items in order misplaced, returning
+Client in localhost:6969 ParseCommand():2026/03/07 19:40:33 Attempting to create order
+Client in localhost:6969 ParseCommand():2026/03/07 19:40:33 Order placed succesfully
+[Client localhost:6969] main(): 2026/03/07 19:40:33 Sending command to server
+[Client localhost:6969] main(): 2026/03/07 19:40:33 Sent command to server succesfully
+[Client localhost:6969] main(): 2026/03/07 19:40:33 Server response logged
+[Client localhost:6969] main(): 2026/03/07 19:40:40 Connection closing
+[Client] main(): 2026/03/07 21:58:01 Client LoadConfig():
+[Client] main(): 2026/03/07 21:58:01 Config file opened
+[Client] main(): 2026/03/07 21:58:01 Config file loaded succesfully
+[Server] main(): 2026/03/07 21:58:13 Loaded config file
+[Server] main(): 2026/03/07 21:58:13 Listening on localhost:6969
+[Client] main(): 2026/03/07 21:58:21 Client LoadConfig():
+[Client] main(): 2026/03/07 21:58:21 Config file opened
+[Client] main(): 2026/03/07 21:58:21 Config file loaded succesfully
+[Client localhost:6969] main(): 2026/03/07 21:58:21 Succesfully connected to server
+[Server] main(): 2026/03/07 21:58:21 Connection succesful. Creating goroutine for new client
+[Server] handleConn() for client 127.0.0.1:55419: 2026/03/07 21:58:21 Client connected, handling connection
+Client in localhost:6969 ParseCommand():2026/03/07 21:58:31 Listing products
+[Client localhost:6969] main(): 2026/03/07 21:58:31 Sending command to server
+[Client localhost:6969] main(): 2026/03/07 21:58:31 Sent command to server succesfully
+[Server] handleConn() for client 127.0.0.1:55419: 2026/03/07 21:58:31 Action received valid, processing
+[Server] handleConn() for client 127.0.0.1:55419: 2026/03/07 21:58:31 Entered handleListProducts
+[Server] handleConn() for client 127.0.0.1:55419: 2026/03/07 21:58:31 Sharing list of products, returning
+[Client localhost:6969] main(): 2026/03/07 21:58:31 Server response logged
+Client in localhost:6969 ParseCommand():2026/03/07 21:58:55 Attempting to delete product
+Client in localhost:6969 ParseCommand():2026/03/07 21:58:55 Deleted product successfully
+[Client localhost:6969] main(): 2026/03/07 21:58:55 Sending command to server
+[Server] handleConn() for client 127.0.0.1:55419: 2026/03/07 21:58:55 Action received valid, processing
+[Server] handleConn() for client 127.0.0.1:55419: 2026/03/07 21:58:55 Entered handleDeleteProduct
+[Client localhost:6969] main(): 2026/03/07 21:58:55 Sent command to server succesfully
+[Server] handleConn() for client 127.0.0.1:55419: 2026/03/07 21:58:55 Product deleted succesfully, returning
+[Client localhost:6969] main(): 2026/03/07 21:58:55 Server response logged

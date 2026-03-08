@@ -13,7 +13,22 @@ import (
 	"sync"
 )
 
+var (
+	mainLogger         *log.Logger
+	parseCommandLogger *log.Logger
+)
+
 func main() {
+	//Create log file
+	file, err := os.OpenFile("info.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Panic("Failed to open log file")
+	}
+	defer file.Close()
+
+	//Temporary prefixes for logs to log handle connection
+	mainLogger = log.New(file, "[Client] main(): ", log.LstdFlags)
+	parseCommandLogger = log.New(file, "[Client] parseCommand(): ", log.LstdFlags)
 	// Load configuration
 	config, err := loadConfig("config.json")
 	if err != nil {
@@ -26,6 +41,11 @@ func main() {
 	if err != nil {
 		log.Fatal("Error connecting to server:", err)
 	}
+	//Change prefix to add address
+	mainLogger.SetPrefix(fmt.Sprintf("[Client %s] main(): ", addr))
+	parseCommandLogger.SetPrefix(fmt.Sprintf("[Client %s] parseCommand(): ", addr))
+
+	mainLogger.Print("Succesfully connected to server")
 	defer conn.Close()
 
 	fmt.Println("Available commands:")
@@ -57,7 +77,6 @@ func main() {
 				mu.Unlock()
 				return
 			}
-
 			// Pretty print the response
 			fmt.Println("\n=== Server Response ===")
 			fmt.Printf("Action: %s\n", resp.Action)
@@ -70,6 +89,7 @@ func main() {
 			}
 			fmt.Println("=======================\n")
 			fmt.Print("> ")
+			mainLogger.Print("Server response logged")
 		}
 	}()
 
@@ -92,31 +112,36 @@ func main() {
 		}
 
 		// Parse and send command
-		request, err := parseCommand(text)
+		request, err := parseCommand(text, addr)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			fmt.Print("> ")
 			continue
 		}
+		mainLogger.Print("Sending command to server")
 
 		// Send request as JSON
 		encoder := json.NewEncoder(conn)
 		err = encoder.Encode(request)
 		if err != nil {
-			log.Fatal("Error sending request:", err)
+			mainLogger.Fatal("Error sending request:", err)
 		}
 
 		fmt.Print("> ")
+		mainLogger.Print("Sent command to server succesfully")
 	}
+	mainLogger.Print("Connection closing")
 }
 
 func loadConfig(filename string) (*shared.Config, error) { // Use shared.Config
+	mainLogger.Print("Client LoadConfig():")
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
+	mainLogger.Print("Config file opened")
 	var config shared.Config // Use shared.Config
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&config)
@@ -124,10 +149,12 @@ func loadConfig(filename string) (*shared.Config, error) { // Use shared.Config
 		return nil, err
 	}
 
+	mainLogger.Print("Config file loaded succesfully")
 	return &config, nil
 }
 
-func parseCommand(input string) (shared.Request, error) { // Use shared.Request
+func parseCommand(input string, addr string) (shared.Request, error) { // Use shared.Request
+	parseCommandLogger.SetPrefix(fmt.Sprintf("Client in %s ParseCommand():", addr))
 	var request shared.Request // Use shared.Request
 	var args []string
 	var inQuotes bool
@@ -151,6 +178,7 @@ func parseCommand(input string) (shared.Request, error) { // Use shared.Request
 	}
 
 	if len(args) == 0 {
+		parseCommandLogger.Print("Command empty")
 		return request, fmt.Errorf("empty command")
 	}
 
@@ -158,7 +186,9 @@ func parseCommand(input string) (shared.Request, error) { // Use shared.Request
 
 	switch command {
 	case "add_product":
+		parseCommandLogger.Print("Attempting to add item")
 		if len(args) != 4 {
+			parseCommandLogger.Print("Add product parameters incorrect, returning")
 			return request, fmt.Errorf("usage: add_product <name> <price> <stock>")
 		}
 		var price float64
@@ -172,9 +202,12 @@ func parseCommand(input string) (shared.Request, error) { // Use shared.Request
 			Price: price,
 			Stock: stock,
 		}
+		parseCommandLogger.Print("Added product succesfully")
 
 	case "update_stock":
+		parseCommandLogger.Print("Attempting to update stock")
 		if len(args) != 3 {
+			parseCommandLogger.Print("Update product stock parameters incorrect, returning")
 			return request, fmt.Errorf("usage: update_stock <product_id> <new_stock>")
 		}
 		var stock int
@@ -185,9 +218,12 @@ func parseCommand(input string) (shared.Request, error) { // Use shared.Request
 			ProductID: args[1],
 			NewStock:  stock,
 		}
+		parseCommandLogger.Print("Updated product stock succesfully")
 
 	case "update_price":
+		parseCommandLogger.Print("Attempting to update price")
 		if len(args) != 3 {
+			parseCommandLogger.Print("Price update parameters incorrect, returning")
 			return request, fmt.Errorf("usage: update_price <product_id> <new_price>")
 		}
 		var price float64
@@ -198,9 +234,12 @@ func parseCommand(input string) (shared.Request, error) { // Use shared.Request
 			ProductID: args[1],
 			NewPrice:  price,
 		}
+		parseCommandLogger.Print("Price updated succesfully")
 
 	case "create_order":
+		parseCommandLogger.Print("Attempting to create order")
 		if len(args) != 2 {
+			parseCommandLogger.Print("Order parameters incorrect, returning")
 			return request, fmt.Errorf("usage: create_order <product_id1:quantity1,product_id2:quantity2,...>")
 		}
 		// Parse items with format "product_id:quantity"
@@ -210,11 +249,13 @@ func parseCommand(input string) (shared.Request, error) { // Use shared.Request
 		for _, item := range items {
 			parts := strings.Split(item, ":")
 			if len(parts) != 2 {
+				parseCommandLogger.Print("Items in order misplaced, returning")
 				return request, fmt.Errorf("invalid item format: %s (should be product_id:quantity)", item)
 			}
 
 			quantity, err := strconv.Atoi(parts[1])
 			if err != nil {
+				parseCommandLogger.Print("Invalid item quantity, returning")
 				return request, fmt.Errorf("invalid quantity for item %s: %v", parts[0], err)
 			}
 
@@ -228,9 +269,12 @@ func parseCommand(input string) (shared.Request, error) { // Use shared.Request
 		request.Parameters = shared.CreateOrderParams{
 			Items: orderItems,
 		}
+		parseCommandLogger.Print("Order placed succesfully")
 
 	case "update_order_status":
+		parseCommandLogger.Print("Attempting to update order stauts")
 		if len(args) != 3 {
+			parseCommandLogger.Print("Update order parameters incorrect, returning")
 			return request, fmt.Errorf("usage: update_order_status <order_id> <status>")
 		}
 		request.Action = "update_order_status"
@@ -238,43 +282,56 @@ func parseCommand(input string) (shared.Request, error) { // Use shared.Request
 			OrderID: args[1],
 			Status:  args[2],
 		}
+		parseCommandLogger.Print("Order status updated succesfully")
 
 	case "list_products":
+		parseCommandLogger.Print("Listing products")
 		request.Action = "list_products"
 		request.Parameters = nil
 
 	case "list_orders":
+		parseCommandLogger.Print("Listing orders")
 		request.Action = "list_orders"
 		request.Parameters = nil
 
 	case "get_product":
+		parseCommandLogger.Print("Attempting to get product")
 		if len(args) != 2 {
+			parseCommandLogger.Print("Get product parameters incorrect, returning")
 			return request, fmt.Errorf("usage: get_product <product_id>")
 		}
 		request.Action = shared.ActionGetProduct
 		request.Parameters = shared.GetProductParams{
 			ProductID: args[1],
 		}
+		parseCommandLogger.Print("Get product ran succesfully")
 
 	case "get_order":
+		parseCommandLogger.Print("Attempting to get order")
 		if len(args) != 2 {
+			parseCommandLogger.Print("Get order parameters incorrect, returning")
 			return request, fmt.Errorf("usage: get_order <order_id>")
 		}
 		request.Action = shared.ActionGetOrder
 		request.Parameters = shared.GetOrderParams{
 			OrderID: args[1],
 		}
+		parseCommandLogger.Print("Get order ran succesfully")
 
 	case "delete_product":
+		parseCommandLogger.Print("Attempting to delete product")
 		if len(args) != 2 {
+			parseCommandLogger.Print("Delete product parameters incorrect, returning")
 			return request, fmt.Errorf("usage: delete_product <product_id>")
 		}
 		request.Action = shared.ActionDeleteProduct
 		request.Parameters = shared.DeleteProductParams{
 			ProductID: args[1],
 		}
+		parseCommandLogger.Print("Deleted product successfully")
 
 	default:
+		parseCommandLogger.Print("Unkown command, returning")
 		return request, fmt.Errorf("unknown command: %s", command)
 	}
 
