@@ -57,3 +57,30 @@ Client in localhost:6969 ParseCommand():2026/03/07 21:58:55 Deleted product succ
 [Client localhost:6969] main(): 2026/03/07 21:58:55 Sent command to server succesfully
 [Server] handleConn() for client 127.0.0.1:55419: 2026/03/07 21:58:55 Product deleted succesfully, returning
 [Client localhost:6969] main(): 2026/03/07 21:58:55 Server response logged
+[Client] main(): 2026/03/08 15:08:23 Client in LoadConfig()
+[Client] main(): 2026/03/08 15:08:23 Config file opened
+[Client] main(): 2026/03/08 15:08:23 Config file loaded succesfully
+[Server] main(): 2026/03/08 15:08:23 Loaded config file
+[Server] main(): 2026/03/08 15:08:23 Listening on localhost:6969
+[Server] main(): 2026/03/08 15:08:56 Loaded config file
+[Server] main(): 2026/03/08 15:08:56 Listening on localhost:6969
+[Server] main(): 2026/03/08 15:10:06 Loaded config file
+[Server] main(): 2026/03/08 15:10:06 Listening on localhost:6969
+[Client] main(): 2026/03/08 15:10:12 Client in LoadConfig()
+[Client] main(): 2026/03/08 15:10:12 Config file opened
+[Client] main(): 2026/03/08 15:10:12 Config file loaded succesfully
+[Client localhost:6969] main(): 2026/03/08 15:10:12 Succesfully connected to server
+[Server] main(): 2026/03/08 15:10:12 Connection succesful. Creating goroutine for new client
+[Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:12 Client connected, handling connection
+[Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:23 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:23 Success. Creating session
+[Client] in localhost:6969 ParseCommand():2026/03/08 15:10:46 Attempting to add item
+[Client] in localhost:6969 ParseCommand():2026/03/08 15:10:46 Added product succesfully
+[Client localhost:6969] main(): 2026/03/08 15:10:46 Sending command to server
+[Client localhost:6969] main(): 2026/03/08 15:10:46 Sent command to server succesfully
+[Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:46 Action received valid, processing
+[Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:46 Entering handleAddProduct
+[Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:46 Product added succesfully, returning to main
+[Client localhost:6969] main(): 2026/03/08 15:10:46 Server response logged
+[Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:48 Error decoding request from %s: %v127.0.0.1:59471read tcp 127.0.0.1:6969->127.0.0.1:59471: wsarecv: An existing connection was forcibly closed by the remote host.
+[Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:48 Connection with client %s terminated127.0.0.1:59471

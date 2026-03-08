@@ -41,6 +41,8 @@ const (
 	ActionGetProduct        = "get_product"
 	ActionGetOrder          = "get_order"
 	ActionDeleteProduct     = "delete_product"
+	ActionAddUser           = "add_user"
+	ActionLogin             = "login"
 )
 
 // Order status constants
@@ -71,6 +73,14 @@ type Order struct {
 	CompletedAt *time.Time  `json:"completed_at,omitempty"`
 }
 
+// User represents a user
+type User struct {
+	Username     string    `json:"username"`
+	Password     []byte    `json:"password"`
+	Admin        bool      `json:"admin"`
+	RegisteredAt time.Time `json:"registered_at"`
+}
+
 // OrderItem represents a product in an order
 type OrderItem struct {
 	ProductID string  `json:"product_id"`
@@ -78,6 +88,13 @@ type OrderItem struct {
 	Quantity  int     `json:"quantity"`
 	Price     float64 `json:"price"`
 	Subtotal  float64 `json:"subtotal"`
+}
+
+// LoginParamas represents parameters for login
+type LoginParams struct {
+	Username     string    `json:"username"`
+	Password     []byte    `json:"password"`
+	RegisteredAt time.Time `json:"registered_at"`
 }
 
 // AddProductParams represents parameters for adding a product
@@ -129,4 +146,9 @@ type GetOrderParams struct {
 // DeleteProductParams represents parameters for deleting a product
 type DeleteProductParams struct {
 	ProductID string `json:"product_id"`
+}
+
+type Session struct {
+	Username string `json:"username"`
+	Admin    bool   `json:"admin"`
 }

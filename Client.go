@@ -64,9 +64,51 @@ func main() {
 	var mu sync.Mutex
 	connected := true
 
+	encoder := json.NewEncoder(conn)
+	decoder := json.NewDecoder(conn)
+
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Print("> ")
+
+	for {
+		fmt.Print("Username: ")
+		scanner.Scan()
+		username := scanner.Text()
+
+		fmt.Print("Password: ")
+		scanner.Scan()
+		password := scanner.Text()
+
+		loqinReq := shared.Request{
+			Action: shared.ActionLogin,
+			Parameters: shared.LoginParams{
+				Username: username,
+				Password: []byte(password),
+			},
+		}
+
+		err := encoder.Encode(loqinReq)
+		if err != nil {
+			mainLogger.Fatal("Error sending login request " + err.Error())
+		}
+
+		var resp shared.Response
+		err = decoder.Decode(&resp)
+		if err != nil {
+			mainLogger.Fatal("Error reading login response:", err)
+		}
+
+		if resp.Success {
+			fmt.Println("Login successful!")
+			break
+		}
+		fmt.Printf("Login failed: %s\n", resp.Error)
+		fmt.Println("Please try again.")
+	}
+
 	// Goroutine to read responses from server
 	go func() {
-		decoder := json.NewDecoder(conn)
+		decoder = json.NewDecoder(conn)
 		for {
 			var resp shared.Response // Use shared.Response
 			err := decoder.Decode(&resp)
@@ -94,8 +136,6 @@ func main() {
 	}()
 
 	// Main goroutine to read user input
-	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Print("> ")
 
 	for scanner.Scan() {
 		mu.Lock()
@@ -121,7 +161,7 @@ func main() {
 		mainLogger.Print("Sending command to server")
 
 		// Send request as JSON
-		encoder := json.NewEncoder(conn)
+		encoder = json.NewEncoder(conn)
 		err = encoder.Encode(request)
 		if err != nil {
 			mainLogger.Fatal("Error sending request:", err)
@@ -134,7 +174,7 @@ func main() {
 }
 
 func loadConfig(filename string) (*shared.Config, error) { // Use shared.Config
-	mainLogger.Print("Client LoadConfig():")
+	mainLogger.Print("Client in LoadConfig()")
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -154,7 +194,7 @@ func loadConfig(filename string) (*shared.Config, error) { // Use shared.Config
 }
 
 func parseCommand(input string, addr string) (shared.Request, error) { // Use shared.Request
-	parseCommandLogger.SetPrefix(fmt.Sprintf("Client in %s ParseCommand():", addr))
+	parseCommandLogger.SetPrefix(fmt.Sprintf("[Client] in %s ParseCommand():", addr))
 	var request shared.Request // Use shared.Request
 	var args []string
 	var inQuotes bool
