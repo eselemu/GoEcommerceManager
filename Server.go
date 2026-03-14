@@ -376,7 +376,7 @@ func (s *InventoryServer) processRequest(req shared.Request, session *shared.Ses
 			return shared.Response{
 				Action:  req.Action,
 				Success: false,
-				Error:   fmt.Sprintf("Unauthorized action. Only admins can %s", req.Action),
+				Error:   fmt.Sprintf("Unknown action %s", req.Action),
 			}
 		}
 	}
