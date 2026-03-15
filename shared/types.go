@@ -43,6 +43,10 @@ const (
 	ActionDeleteProduct     = "delete_product"
 	ActionAddUser           = "add_user"
 	ActionLogin             = "login"
+	ActionAddToCart         = "add_to_cart"
+	ActionRemoveFromCart    = "remove_from_cart"
+	ActionClearCart         = "clear_cart"
+	ActionCheckout          = "checkout"
 )
 
 // Order status constants
@@ -148,7 +152,21 @@ type DeleteProductParams struct {
 	ProductID string `json:"product_id"`
 }
 
+type AddItemToCartParams struct {
+	CartItem CartItem `json:"cart_item"`
+}
+
 type Session struct {
 	Username string `json:"username"`
 	Admin    bool   `json:"admin"`
+	Cart     Cart   `json:"cart"`
+}
+
+type CartItem struct {
+	ProductID string `json:"product_id"`
+	Quantity  int    `json:"quantity"`
+}
+
+type Cart struct {
+	Items []CartItem `json:"items"`
 }

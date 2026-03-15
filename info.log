@@ -84,3 +84,92 @@ Client in localhost:6969 ParseCommand():2026/03/07 21:58:55 Deleted product succ
 [Client localhost:6969] main(): 2026/03/08 15:10:46 Server response logged
 [Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:48 Error decoding request from %s: %v127.0.0.1:59471read tcp 127.0.0.1:6969->127.0.0.1:59471: wsarecv: An existing connection was forcibly closed by the remote host.
 [Server] handleConn() for client 127.0.0.1:59471: 2026/03/08 15:10:48 Connection with client %s terminated127.0.0.1:59471
+[Server] main(): 2026/03/14 19:48:08 Loaded config file
+[Server] main(): 2026/03/14 19:48:08 Listening on localhost:6969
+[Client] main(): 2026/03/14 19:48:24 Client in LoadConfig()
+[Client] main(): 2026/03/14 19:48:24 Config file opened
+[Client] main(): 2026/03/14 19:48:24 Config file loaded succesfully
+[Client localhost:6969] main(): 2026/03/14 19:48:24 Succesfully connected to server
+[Server] main(): 2026/03/14 19:48:24 Connection succesful. Creating goroutine for new client
+[Server] handleConn() for client 127.0.0.1:62001: 2026/03/14 19:48:24 Client connected, handling connection
+[Server] handleConn() for client 127.0.0.1:62001: 2026/03/14 19:49:09 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:62001: 2026/03/14 19:49:09 Success. Creating session
+[Client] in localhost:6969 ParseCommand():2026/03/14 19:49:49 Attempting to create order
+[Client] in localhost:6969 ParseCommand():2026/03/14 19:49:49 Order placed succesfully
+[Client localhost:6969] main(): 2026/03/14 19:49:49 Sending command to server
+[Client localhost:6969] main(): 2026/03/14 19:49:49 Sent command to server succesfully
+[Server] handleConn() for client 127.0.0.1:62001: 2026/03/14 19:49:49 Action received valid, processing
+[Server] handleConn() for client 127.0.0.1:62001: 2026/03/14 19:49:49 Entered handleCreateOrder
+[Server] handleConn() for client 127.0.0.1:62001: 2026/03/14 19:49:49 Succesfully created order item
+[Server] handleConn() for client 127.0.0.1:62001: 2026/03/14 19:49:49 Order succesfully created and saved, returning
+[Client localhost:6969] main(): 2026/03/14 19:49:49 Server response logged
+[Client localhost:6969] main(): 2026/03/14 21:03:19 Connection closing
+[Server] handleConn() for client 127.0.0.1:62001: 2026/03/14 21:03:19 Error decoding request from %s: %v127.0.0.1:62001read tcp 127.0.0.1:6969->127.0.0.1:62001: wsarecv: An existing connection was forcibly closed by the remote host.
+[Server] handleConn() for client 127.0.0.1:62001: 2026/03/14 21:03:19 Connection with client %s terminated127.0.0.1:62001
+[Client] main(): 2026/03/14 21:03:43 Client in LoadConfig()
+[Client] main(): 2026/03/14 21:03:43 Config file opened
+[Client] main(): 2026/03/14 21:03:43 Config file loaded succesfully
+[Client localhost:6969] main(): 2026/03/14 21:03:43 Succesfully connected to server
+[Server] main(): 2026/03/14 21:03:43 Connection succesful. Creating goroutine for new client
+[Server] handleConn() for client 127.0.0.1:55729: 2026/03/14 21:03:43 Client connected, handling connection
+[Server] handleConn() for client 127.0.0.1:55729: 2026/03/14 21:03:48 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:55729: 2026/03/14 21:03:48 Login failed, user not found
+[Server] handleConn() for client 127.0.0.1:55729: 2026/03/14 21:04:25 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:55729: 2026/03/14 21:04:25 Invalid parameters in handleLogin; username empty, returning
+[Client] main(): 2026/03/14 21:05:21 Client in LoadConfig()
+[Client] main(): 2026/03/14 21:05:21 Config file opened
+[Client] main(): 2026/03/14 21:05:21 Config file loaded succesfully
+[Server] main(): 2026/03/14 21:05:21 Connection succesful. Creating goroutine for new client
+[Client localhost:6969] main(): 2026/03/14 21:05:21 Succesfully connected to server
+[Server] handleConn() for client 127.0.0.1:53285: 2026/03/14 21:05:21 Client connected, handling connection
+[Server] handleConn() for client 127.0.0.1:53285: 2026/03/14 21:05:27 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:53285: 2026/03/14 21:05:27 Success. Creating session
+[Client localhost:6969] main(): 2026/03/14 21:06:37 Connection closing
+[Server] handleConn() for client 127.0.0.1:53285: 2026/03/14 21:06:37 Error decoding request from %s: %v127.0.0.1:53285read tcp 127.0.0.1:6969->127.0.0.1:53285: wsarecv: An existing connection was forcibly closed by the remote host.
+[Server] handleConn() for client 127.0.0.1:53285: 2026/03/14 21:06:37 Connection with client %s terminated127.0.0.1:53285
+[Client] main(): 2026/03/14 21:06:38 Client in LoadConfig()
+[Client] main(): 2026/03/14 21:06:38 Config file opened
+[Client] main(): 2026/03/14 21:06:38 Config file loaded succesfully
+[Client localhost:6969] main(): 2026/03/14 21:06:38 Succesfully connected to server
+[Server] main(): 2026/03/14 21:06:38 Connection succesful. Creating goroutine for new client
+[Server] handleConn() for client 127.0.0.1:58591: 2026/03/14 21:06:38 Client connected, handling connection
+[Server] handleConn() for client 127.0.0.1:58591: 2026/03/14 21:06:44 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:58591: 2026/03/14 21:06:44 Login failed, user not found
+[Client] main(): 2026/03/14 21:07:46 Client in LoadConfig()
+[Client] main(): 2026/03/14 21:07:46 Config file opened
+[Client] main(): 2026/03/14 21:07:46 Config file loaded succesfully
+[Client localhost:6969] main(): 2026/03/14 21:07:46 Succesfully connected to server
+[Server] main(): 2026/03/14 21:07:46 Connection succesful. Creating goroutine for new client
+[Server] handleConn() for client 127.0.0.1:58715: 2026/03/14 21:07:46 Client connected, handling connection
+[Server] handleConn() for client 127.0.0.1:58715: 2026/03/14 21:07:50 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:58715: 2026/03/14 21:07:50 Login failed, user not found
+[Client] main(): 2026/03/14 21:08:10 Client in LoadConfig()
+[Client] main(): 2026/03/14 21:08:10 Config file opened
+[Client] main(): 2026/03/14 21:08:10 Config file loaded succesfully
+[Client localhost:6969] main(): 2026/03/14 21:08:10 Succesfully connected to server
+[Server] main(): 2026/03/14 21:08:10 Connection succesful. Creating goroutine for new client
+[Server] handleConn() for client 127.0.0.1:63497: 2026/03/14 21:08:10 Client connected, handling connection
+[Server] handleConn() for client 127.0.0.1:63497: 2026/03/14 21:08:14 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:63497: 2026/03/14 21:08:14 Login failed, user not found
+[Client] main(): 2026/03/14 21:19:43 Client in LoadConfig()
+[Client] main(): 2026/03/14 21:19:43 Config file opened
+[Client] main(): 2026/03/14 21:19:43 Config file loaded succesfully
+[Server] main(): 2026/03/14 21:19:43 Connection succesful. Creating goroutine for new client
+[Client localhost:6969] main(): 2026/03/14 21:19:43 Succesfully connected to server
+[Server] handleConn() for client 127.0.0.1:61361: 2026/03/14 21:19:43 Client connected, handling connection
+[Server] handleConn() for client 127.0.0.1:61361: 2026/03/14 21:19:48 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:61361: 2026/03/14 21:19:48 Login failed, user not found
+[Server] handleConn() for client 127.0.0.1:61361: 2026/03/14 21:19:53 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:61361: 2026/03/14 21:19:53 Invalid parameters in handleLogin; username empty, returning
+[Server] main(): 2026/03/14 21:19:59 Loaded config file
+[Server] main(): 2026/03/14 21:19:59 Listening on localhost:6969
+[Client] main(): 2026/03/14 21:20:02 Client in LoadConfig()
+[Client] main(): 2026/03/14 21:20:02 Config file opened
+[Client] main(): 2026/03/14 21:20:02 Config file loaded succesfully
+[Client localhost:6969] main(): 2026/03/14 21:20:02 Succesfully connected to server
+[Server] main(): 2026/03/14 21:20:02 Connection succesful. Creating goroutine for new client
+[Server] handleConn() for client 127.0.0.1:61409: 2026/03/14 21:20:02 Client connected, handling connection
+[Server] handleConn() for client 127.0.0.1:61409: 2026/03/14 21:20:05 Entering handleLogin
+[Server] handleConn() for client 127.0.0.1:61409: 2026/03/14 21:20:05 Success. Creating session
+[Client localhost:6969] main(): 2026/03/14 21:20:08 Connection closing
+[Server] handleConn() for client 127.0.0.1:61409: 2026/03/14 21:20:08 Connection with client %s terminated127.0.0.1:61409

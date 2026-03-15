@@ -1,8 +1,14 @@
 [
   {
     "username": "Admin1",
-    "password": "JDJhJDEwJDFOYUNHTnFmQmtYNXJuUmlwMGNzME9vQ3BYemFYNUwvaS9jS3pFZmZ6M2t2R1dlaTVMdC5T",
+    "password": "JDJhJDEwJG9NdGV4VnNxTGZHcE5YTG13NFI0NHVHRW9CcDVOQzhXcHZ4Z1IuM3ZxaHZtblJ0dExyUDBl",
     "admin": true,
-    "registered_at": "2026-03-08T15:10:06.3560802-06:00"
+    "registered_at": "2026-03-14T21:19:59.2444471-06:00"
+  },
+  {
+    "username": "Client",
+    "password": "JDJhJDEwJDltL3MxOFBQZ3R2andJblNDTG0uNU9EdWEvamtpZkZhR3hPVFRBN1hkYzk5NzBBblh5OUky",
+    "admin": false,
+    "registered_at": "2026-03-14T21:19:59.3357854-06:00"
   }
 ]

@@ -48,19 +48,6 @@ func main() {
 	mainLogger.Print("Succesfully connected to server")
 	defer conn.Close()
 
-	fmt.Println("Available commands:")
-	fmt.Println("  add_product <name> <price> <stock>")
-	fmt.Println("  update_stock <product_id> <new_stock>")
-	fmt.Println("  update_price <product_id> <new_price>")
-	fmt.Println("  get_product <product_id>")
-	fmt.Println("  delete_product <product_id>")
-	fmt.Println("  list_products")
-	fmt.Println("  create_order <product_id1:quantity1,product_id2:quantity2,...>")
-	fmt.Println("  update_order_status <order_id> <status>")
-	fmt.Println("  get_order <order_id>")
-	fmt.Println("  list_orders")
-	fmt.Println("  exit")
-
 	var mu sync.Mutex
 	connected := true
 
@@ -69,6 +56,8 @@ func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("> ")
+
+	var isAdmin bool
 
 	for {
 		fmt.Print("Username: ")
@@ -100,11 +89,20 @@ func main() {
 
 		if resp.Success {
 			fmt.Println("Login successful!")
+			data, err := json.Marshal(resp.Data)
+			if err == nil {
+				var session shared.Session
+				if err := json.Unmarshal(data, &session); err == nil {
+					isAdmin = session.Admin
+				}
+			}
 			break
 		}
 		fmt.Printf("Login failed: %s\n", resp.Error)
 		fmt.Println("Please try again.")
 	}
+
+	printHelp(isAdmin)
 
 	// Goroutine to read responses from server
 	go func() {
@@ -370,10 +368,68 @@ func parseCommand(input string, addr string) (shared.Request, error) { // Use sh
 		}
 		parseCommandLogger.Print("Deleted product successfully")
 
+	case "add_to_cart":
+		parseCommandLogger.Print("Attempting to add item to cart")
+		if len(args) != 3 {
+			return request, fmt.Errorf("usage: add_to_cart <product_id> <quantity>")
+		}
+		var quantity int
+		fmt.Sscanf(args[2], "%d", &quantity)
+		request.Action = shared.ActionAddToCart
+		request.Parameters = shared.CartItem{
+			ProductID: args[1],
+			Quantity:  quantity,
+		}
+
+	case "remove_from_cart":
+		parseCommandLogger.Print("Attempting to remove item from cart")
+		if len(args) != 3 {
+			return request, fmt.Errorf("usage: remove_from_cart <product_id> <quantity>")
+		}
+		var quantity int
+		fmt.Sscanf(args[2], "%d", &quantity)
+		request.Action = shared.ActionRemoveFromCart
+		request.Parameters = shared.CartItem{
+			ProductID: args[1],
+			Quantity:  quantity,
+		}
+
+	case "clear_cart":
+		parseCommandLogger.Print("Clearing cart")
+		request.Action = shared.ActionClearCart
+		request.Parameters = nil
+
+	case "checkout":
+		parseCommandLogger.Print("Checking out")
+		request.Action = shared.ActionCheckout
+		request.Parameters = nil
+
 	default:
 		parseCommandLogger.Print("Unkown command, returning")
 		return request, fmt.Errorf("unknown command: %s", command)
 	}
 
 	return request, nil
+}
+
+func printHelp(isAdmin bool) {
+	fmt.Println("Available commands:")
+	fmt.Println("  list_products")
+	fmt.Println("  get_product <product_id>")
+	fmt.Println("  add_to_cart <product_id> <quantity>")
+	fmt.Println("  remove_from_cart <product_id> <quantity>")
+	fmt.Println("  clear_cart")
+	fmt.Println("  checkout")
+	fmt.Println("  get_order <order_id>")
+	fmt.Println("  list_orders")
+	fmt.Println("  exit")
+
+	if isAdmin {
+		fmt.Println("\n  [Admin commands]")
+		fmt.Println("  add_product <name> <price> <stock>")
+		fmt.Println("  update_stock <product_id> <new_stock>")
+		fmt.Println("  update_price <product_id> <new_price>")
+		fmt.Println("  delete_product <product_id>")
+		fmt.Println("  update_order_status <order_id> <status>")
+	}
 }

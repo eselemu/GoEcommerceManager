@@ -106,6 +106,23 @@ func (s *InventoryServer) promptAdmin() bool {
 	return false
 }
 
+func (s *InventoryServer) bootstrapClient() {
+	hash, err := bcrypt.GenerateFromPassword([]byte("12345"), bcrypt.DefaultCost)
+	if err != nil {
+		return
+	}
+	client := shared.User{
+		Username:     "Client",
+		Password:     hash,
+		Admin:        false,
+		RegisteredAt: time.Now(),
+	}
+	s.mu.Lock()
+	s.users[client.Username] = client
+	s.mu.Unlock()
+	s.saveUsers()
+}
+
 func (s *InventoryServer) bootstrapAdmin() shared.Response {
 	now := time.Now()
 	hash, err := bcrypt.GenerateFromPassword([]byte("12345"), bcrypt.DefaultCost)
@@ -269,6 +286,7 @@ func main() {
 	if !server.promptAdmin() {
 		server.bootstrapAdmin()
 	}
+	server.bootstrapClient()
 
 	for {
 		conn, err := listener.Accept()
@@ -402,6 +420,14 @@ func (s *InventoryServer) processRequest(req shared.Request, session *shared.Ses
 		return s.handleGetOrder(req.Parameters, logger)
 	case shared.ActionDeleteProduct:
 		return s.handleDeleteProduct(req.Parameters, logger)
+	case shared.ActionAddToCart:
+		return s.handleAddToCart(req.Parameters, session, logger)
+	case shared.ActionRemoveFromCart:
+		return s.removeFromCart(req.Parameters, session, logger)
+	case shared.ActionClearCart:
+		return s.clearCart(session, logger)
+	case shared.ActionCheckout:
+		return s.checkout(session, logger)
 	default:
 		serverLogger.Print("Action unknown, returning to handle conn")
 		return shared.Response{
@@ -1264,4 +1290,185 @@ func (s *InventoryServer) handleDeleteProduct(params interface{}, logger *log.Lo
 		Success: true,
 		Data:    map[string]string{"message": "Product deleted successfully"},
 	}
+}
+
+func (s *InventoryServer) handleAddToCart(params interface{}, session *shared.Session, logger *log.Logger) shared.Response {
+	fmt.Println("Processing add_to_cart request...")
+	logger.Print("Entering handleAddToCart")
+
+	// Parse parameters
+	var p shared.CartItem
+	data, err := json.Marshal(params)
+	if err != nil {
+		logger.Print("Invalid parameters in handleAddToCart, returning")
+		return shared.Response{
+			Action:  shared.ActionAddToCart,
+			Success: false,
+			Error:   "Invalid parameters format",
+		}
+	}
+
+	err = json.Unmarshal(data, &p)
+	if err != nil {
+		logger.Print("Error unmarshaling in handleAddToCart, returning")
+		return shared.Response{
+			Action:  shared.ActionAddToCart,
+			Success: false,
+			Error:   "Invalid parameters: " + err.Error(),
+		}
+	}
+
+	// Validate input
+	if p.ProductID == "" {
+		logger.Print("Invalid parameters in handleAddToCart; id empty, returning")
+		return shared.Response{
+			Action:  shared.ActionAddToCart,
+			Success: false,
+			Error:   "Product name cannot be empty",
+		}
+	}
+	if p.Quantity <= 0 {
+		logger.Print("Invalid parameters in handleAddToCart; quantity less than 0, returning")
+		return shared.Response{
+			Action:  shared.ActionAddToCart,
+			Success: false,
+			Error:   "Price must be greater than 0",
+		}
+	}
+
+	s.mu.RLock()
+	_, exists := s.products[p.ProductID]
+	s.mu.RUnlock()
+
+	if !exists {
+		logger.Print("Invalid parameters in handleAddToCart; product id non existant, returning")
+		return shared.Response{
+			Action:  shared.ActionAddToCart,
+			Success: false,
+			Error:   fmt.Sprintf("Product with ID %s not found", p.ProductID),
+		}
+	}
+
+	for i, item := range session.Cart.Items {
+		if item.ProductID == p.ProductID {
+			session.Cart.Items[i].Quantity += p.Quantity
+			logger.Print("Updated existing item quantity in cart")
+			return shared.Response{
+				Action:  shared.ActionAddToCart,
+				Success: true,
+				Data:    session.Cart,
+			}
+		}
+	}
+
+	session.Cart.Items = append(session.Cart.Items, p)
+	logger.Print("Item added to cart successfully")
+	return shared.Response{
+		Action:  shared.ActionAddToCart,
+		Success: true,
+		Data:    session.Cart,
+	}
+}
+
+func (s *InventoryServer) removeFromCart(params interface{}, session *shared.Session, logger *log.Logger) shared.Response {
+	fmt.Println("Processing remove_from_cart request...")
+	logger.Print("Entering remove_from_cart")
+
+	// Parse parameters
+	var p shared.CartItem
+	data, err := json.Marshal(params)
+	if err != nil {
+		logger.Print("Invalid parameters in removeFromCart, returning")
+		return shared.Response{
+			Action:  shared.ActionRemoveFromCart,
+			Success: false,
+			Error:   "Invalid parameters format",
+		}
+	}
+
+	err = json.Unmarshal(data, &p)
+	if err != nil {
+		logger.Print("Error unmarshaling in removeFromCart, returning")
+		return shared.Response{
+			Action:  shared.ActionRemoveFromCart,
+			Success: false,
+			Error:   "Invalid parameters: " + err.Error(),
+		}
+	}
+
+	// Validate input
+	if p.ProductID == "" {
+		logger.Print("Invalid parameters in removeFromCart; id empty, returning")
+		return shared.Response{
+			Action:  shared.ActionRemoveFromCart,
+			Success: false,
+			Error:   "Product name cannot be empty",
+		}
+	}
+	if p.Quantity <= 0 {
+		logger.Print("Invalid parameters in removeFromCart; quantity less than 0, returning")
+		return shared.Response{
+			Action:  shared.ActionRemoveFromCart,
+			Success: false,
+			Error:   "Quantity must be greater than 0",
+		}
+	}
+
+	s.mu.RLock()
+	_, exists := s.products[p.ProductID]
+	s.mu.RUnlock()
+
+	if !exists {
+		logger.Print("Invalid parameters in removeFromCart; product id non existant, returning")
+		return shared.Response{
+			Action:  shared.ActionRemoveFromCart,
+			Success: false,
+			Error:   fmt.Sprintf("Product with ID %s not found", p.ProductID),
+		}
+	}
+
+	for i, item := range session.Cart.Items {
+		if item.ProductID == p.ProductID {
+			session.Cart.Items = append(session.Cart.Items[:i], session.Cart.Items[i+1:]...)
+			logger.Print("Removed existing item from cart")
+			return shared.Response{
+				Action:  shared.ActionRemoveFromCart,
+				Success: true,
+				Data:    session.Cart,
+			}
+		}
+	}
+
+	return shared.Response{
+		Action:  shared.ActionRemoveFromCart,
+		Success: false,
+		Error:   fmt.Sprintf("Product was not in cart"),
+	}
+}
+
+func (s *InventoryServer) clearCart(session *shared.Session, logger *log.Logger) shared.Response {
+	fmt.Println("Processing clear_cart request...")
+	logger.Print("Entering clear_cart")
+
+	session.Cart.Items = session.Cart.Items[:0]
+	return shared.Response{
+		Action:  shared.ActionClearCart,
+		Success: true,
+		Data:    "Cart cleared",
+	}
+}
+
+func (s *InventoryServer) checkout(session *shared.Session, logger *log.Logger) shared.Response {
+	params := shared.CreateOrderParams{Items: []shared.OrderItemRequest{}}
+	for _, item := range session.Cart.Items {
+		params.Items = append(params.Items, shared.OrderItemRequest{
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+		})
+	}
+	resp := s.handleCreateOrder(params, logger)
+	if resp.Success {
+		session.Cart.Items = session.Cart.Items[:0]
+	}
+	return resp
 }
